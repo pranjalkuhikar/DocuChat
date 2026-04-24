@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -14,6 +14,29 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [activeDoc, setActiveDoc] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const resetSession = () => {
+    setMessages([
+      {
+        role: "assistant",
+        content: "Session reset. Upload a new document to begin.",
+      },
+    ]);
+    setActiveDoc(null);
+    setStatus("");
+    setUrl("");
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,19 +55,21 @@ export default function Home() {
       const data = await res.json();
       if (res.ok) {
         setStatus("PDF processed successfully! ✅");
+        setActiveDoc(file.name);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content:
-              "I've analyzed the PDF. You can now ask questions about it!",
+            content: `I've analyzed the PDF: **${file.name}**. You can now ask questions about it!`,
           },
         ]);
       } else {
         setStatus(`Error: ${data.error}`);
       }
-    } catch {
-      setStatus("Failed to upload PDF.");
+    } catch (error) {
+      setStatus(
+        `Failed to upload PDF. ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -64,19 +89,21 @@ export default function Home() {
       const data = await res.json();
       if (res.ok) {
         setStatus("URL processed successfully! ✅");
+        setActiveDoc(url);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content:
-              "I've analyzed the webpage content. You can now ask questions about it!",
+            content: `I've analyzed the content from: **${url}**. You can now ask questions about it!`,
           },
         ]);
       } else {
         setStatus(`Error: ${data.error}`);
       }
-    } catch {
-      setStatus("Failed to analyze URL.");
+    } catch (error) {
+      setStatus(
+        `Failed to analyze URL. ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -109,10 +136,13 @@ export default function Home() {
           { role: "assistant", content: `Error: ${data.error}` },
         ]);
       }
-    } catch {
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I couldn't reach the server." },
+        {
+          role: "assistant",
+          content: `Sorry, I couldn't reach the server. ${error instanceof Error ? error.message : String(error)}`,
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -151,6 +181,12 @@ export default function Home() {
               {status}
             </span>
           )}
+          <button
+            onClick={resetSession}
+            className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+          >
+            Reset
+          </button>
           <button className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 rounded-full hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 transition-colors">
             Connect Wallet
           </button>
@@ -254,20 +290,25 @@ export default function Home() {
                   className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                     msg.role === "user"
                       ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                      : "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50 border dark:border-zinc-700"
+                      : "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50 border dark:border-zinc-700 shadow-sm"
                   }`}
                 >
-                  {msg.content}
+                  {msg.content
+                    .split("**")
+                    .map((part, index) =>
+                      index % 2 === 1 ? <b key={index}>{part}</b> : part,
+                    )}
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white dark:bg-zinc-800 rounded-2xl px-4 py-3 text-sm animate-pulse">
+                <div className="bg-white dark:bg-zinc-800 rounded-2xl px-4 py-3 text-sm animate-pulse shadow-sm border dark:border-zinc-700">
                   Thinking...
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
