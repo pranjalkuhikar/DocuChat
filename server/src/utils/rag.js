@@ -10,7 +10,7 @@ import config from "../config/config.js";
 
 // ===== MODEL =====
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-1.5-flash",
   apiKey: config.GEMINI_API_KEY,
 });
 
