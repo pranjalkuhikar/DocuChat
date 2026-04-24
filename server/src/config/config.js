@@ -11,7 +11,7 @@ const _config = {
 };
 
 if (!_config.GEMINI_API_KEY) {
-  throw new Error(`Missing GEMINI_API_KEY in ${envFilePath}`);
+  throw new Error("Missing GEMINI_API_KEY in .env file");
 }
 
 const config = Object.freeze(_config);
