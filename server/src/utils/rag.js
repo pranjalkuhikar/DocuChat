@@ -6,7 +6,6 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { CohereEmbeddings } from "@langchain/cohere";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
-import promptSync from "prompt-sync";
 import config from "../config/config.js";
 
 // ===== MODEL =====
@@ -27,9 +26,6 @@ const pinecone = new Pinecone({
 });
 
 const index = pinecone.Index(config.PINECONE_INDEX);
-
-// ===== INPUT =====
-const prompt = promptSync();
 
 // ===== PROMPT =====
 function template() {
@@ -85,22 +81,18 @@ async function getVectorStore() {
   return vectorStore;
 }
 
-async function pdfRag() {
+async function query(question) {
   const vectorStore = await getVectorStore();
   const chain = template().pipe(model);
 
-  while (true) {
-    const input = prompt("You :- ");
-    if (input === "exit") break;
+  const results = await vectorStore.similaritySearch(question, 3);
+  const context = results.map((result) => result.pageContent).join("\n");
 
-    const results = await vectorStore.similaritySearch(input, 3);
-    const context = results.map((result) => result.pageContent).join("\n");
+  const response = await chain.invoke({
+    pdfText: context,
+  });
 
-    const response = await chain.invoke({
-      pdfText: context,
-    });
-    console.log("Bot :- ", response.content);
-  }
+  return response.content;
 }
 
-export { setup, pdfRag };
+export { setup, query };
