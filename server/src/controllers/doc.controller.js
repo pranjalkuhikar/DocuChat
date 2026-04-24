@@ -1,4 +1,5 @@
 import { setup, query } from "../utils/rag.js";
+import fs from "fs";
 
 export const docUpload = async (req, res) => {
   try {
@@ -7,6 +8,13 @@ export const docUpload = async (req, res) => {
     }
     const filePath = req.file.path;
     await setup(filePath);
+
+    // Cleanup: Delete the file after processing
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Error deleting file:", err);
+      else console.log(`Deleted temporary file: ${filePath} 🗑️`);
+    });
+
     res.json({ message: "PDF processed successfully" });
   } catch (error) {
     console.error("Upload error:", error);
