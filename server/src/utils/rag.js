@@ -57,7 +57,9 @@ async function setup(filePath) {
   );
 
   if (chunks.length === 0) {
-    throw new Error(`PDF was loaded, but no non-empty chunks were created: ${filePath}`);
+    throw new Error(
+      `PDF was loaded, but no non-empty chunks were created: ${filePath}`,
+    );
   }
 
   await PineconeStore.fromDocuments(chunks, embeddings, {
