@@ -15,9 +15,16 @@ const model = new ChatGoogleGenerativeAI({
 });
 
 // ===== EMBEDDINGS =====
-const embeddings = new CohereEmbeddings({
+const docEmbeddings = new CohereEmbeddings({
   apiKey: config.COHERE_API_KEY,
   model: "embed-english-v3.0",
+  inputType: "search_document",
+});
+
+const queryEmbeddings = new CohereEmbeddings({
+  apiKey: config.COHERE_API_KEY,
+  model: "embed-english-v3.0",
+  inputType: "search_query",
 });
 
 // ===== PINECONE =====
@@ -67,7 +74,7 @@ async function setup(source) {
     );
   }
 
-  await PineconeStore.fromDocuments(chunks, embeddings, {
+  await PineconeStore.fromDocuments(chunks, docEmbeddings, {
     pineconeIndex: index,
   });
   console.log(`Stored ${chunks.length} chunks in Pinecone ✅`);
@@ -75,7 +82,7 @@ async function setup(source) {
 
 // ===== LOAD EXISTING VECTOR DB =====
 async function getVectorStore() {
-  const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+  const vectorStore = await PineconeStore.fromExistingIndex(queryEmbeddings, {
     pineconeIndex: index,
   });
   return vectorStore;
