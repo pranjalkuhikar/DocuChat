@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { CohereEmbeddings } from "@langchain/cohere";
@@ -39,13 +40,21 @@ function template() {
 }
 
 // ===== LOAD + STORE (ONLY FIRST TIME) =====
-async function setup(filePath) {
-  const loader = new PDFLoader(filePath);
+async function setup(source) {
+  let loader;
+  if (source.startsWith("http")) {
+    console.log(`Loading content from URL: ${source} 🌐`);
+    loader = new CheerioWebBaseLoader(source);
+  } else {
+    console.log(`Loading PDF from file: ${source} 📄`);
+    loader = new PDFLoader(source);
+  }
+
   const docs = await loader.load();
   const nonEmptyDocs = docs.filter((doc) => doc.pageContent?.trim());
 
   if (nonEmptyDocs.length === 0) {
-    throw new Error(`No text could be extracted from PDF: ${filePath}`);
+    throw new Error(`No text could be extracted from source: ${source}`);
   }
 
   const textSplitter = new RecursiveCharacterTextSplitter({
@@ -58,7 +67,7 @@ async function setup(filePath) {
 
   if (chunks.length === 0) {
     throw new Error(
-      `PDF was loaded, but no non-empty chunks were created: ${filePath}`,
+      `Source was loaded, but no non-empty chunks were created: ${source}`,
     );
   }
 
