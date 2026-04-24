@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -46,8 +47,18 @@ function template() {
 async function setup(source) {
   let loader;
   if (source.startsWith("http")) {
-    console.log(`Loading content from URL: ${source} 🌐`);
-    loader = new CheerioWebBaseLoader(source);
+    if (
+      source.toLowerCase().endsWith(".pdf") ||
+      source.includes("imagekit.io")
+    ) {
+      console.log(`Loading PDF from URL: ${source} 📄`);
+      const response = await fetch(source);
+      const blob = await response.blob();
+      loader = new WebPDFLoader(blob);
+    } else {
+      console.log(`Loading content from URL: ${source} 🌐`);
+      loader = new CheerioWebBaseLoader(source);
+    }
   } else {
     console.log(`Loading PDF from file: ${source} 📄`);
     loader = new PDFLoader(source);

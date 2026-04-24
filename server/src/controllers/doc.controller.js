@@ -1,19 +1,29 @@
 import { setup, query } from "../utils/rag.js";
-import fs from "fs";
+import ImageKit from "imagekit";
+import config from "../config/config.js";
+
+// Setup ImageKit
+const imagekit = new ImageKit({
+  publicKey: config.IMAGEKIT_PUBLIC_KEY,
+  privateKey: config.IMAGEKIT_PRIVATE_KEY,
+  urlEndpoint: config.IMAGEKIT_URL_ENDPOINT,
+});
 
 export const docUpload = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    const filePath = req.file.path;
-    await setup(filePath);
 
-    // Cleanup: Delete the file after processing
-    fs.unlink(filePath, (err) => {
-      if (err) console.error("Error deleting file:", err);
-      else console.log(`Deleted temporary file: ${filePath} 🗑️`);
+    // Upload to ImageKit manually since we're using memory storage
+    const uploadResponse = await imagekit.upload({
+      file: req.file.buffer, // required
+      fileName: Date.now() + "-" + req.file.originalname, // required
+      folder: "/docuchat",
     });
+
+    const fileUrl = uploadResponse.url;
+    await setup(fileUrl);
 
     res.json({ message: "PDF processed successfully" });
   } catch (error) {
