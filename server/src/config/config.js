@@ -16,6 +16,15 @@ const _config = {
 if (!_config.GEMINI_API_KEY) {
   throw new Error("Missing GEMINI_API_KEY in .env file");
 }
+if (!_config.COHERE_API_KEY) {
+  throw new Error("Missing COHERE_API_KEY in .env file");
+}
+if (!_config.PINECONE_API_KEY) {
+  throw new Error("Missing PINECONE_API_KEY in .env file");
+}
+if (!_config.PINECONE_INDEX) {
+  throw new Error("Missing PINECONE_INDEX in .env file");
+}
 
 const config = Object.freeze(_config);
 
