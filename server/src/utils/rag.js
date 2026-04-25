@@ -1,31 +1,25 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import {
+  ChatGoogleGenerativeAI,
+  GoogleGenerativeAIEmbeddings,
+} from "@langchain/google-genai";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
-import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { CohereEmbeddings } from "@langchain/cohere";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import config from "../config/config.js";
 
 // ===== MODEL =====
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-1.5-flash",
   apiKey: config.GEMINI_API_KEY,
 });
 
 // ===== EMBEDDINGS =====
-const docEmbeddings = new CohereEmbeddings({
-  apiKey: config.COHERE_API_KEY,
-  model: "embed-english-v3.0",
-  inputType: "search_document",
-});
-
-const queryEmbeddings = new CohereEmbeddings({
-  apiKey: config.COHERE_API_KEY,
-  model: "embed-english-v3.0",
-  inputType: "search_query",
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  apiKey: config.GEMINI_API_KEY,
+  modelName: "text-embedding-004",
 });
 
 // ===== PINECONE =====
@@ -93,11 +87,63 @@ async function setup(source) {
     );
   }
 
+  const processedChunks = chunks.map((chunk, i) => ({
+    ...chunk,
+    metadata: {
+      ...chunk.metadata,
+      source: source,
+      timestamp: Date.now(),
+    },
+  }));
+
   try {
-    await PineconeStore.fromDocuments(chunks, docEmbeddings, {
-      pineconeIndex: index,
+    console.log("Embedding documents manually...");
+    const texts = processedChunks.map((chunk) => chunk.pageContent);
+    console.log(`Preparing to embed ${texts.length} text chunks`);
+
+    const embeddingResponse = await embeddings.embedDocuments(texts);
+    console.log(
+      `Embedding response type: ${typeof embeddingResponse}, length: ${Array.isArray(embeddingResponse) ? embeddingResponse.length : "N/A"}`,
+    );
+    console.log(
+      `First embedding type: ${Array.isArray(embeddingResponse) ? typeof embeddingResponse[0] : "N/A"}`,
+    );
+
+    if (
+      !embeddingResponse ||
+      !Array.isArray(embeddingResponse) ||
+      embeddingResponse.length === 0
+    ) {
+      throw new Error(
+        `Embeddings returned invalid response: ${JSON.stringify(embeddingResponse)}`,
+      );
+    }
+
+    const firstEmbedding = Array.isArray(embeddingResponse[0])
+      ? embeddingResponse[0]
+      : embeddingResponse[0]?.values || [];
+    console.log(`First embedding dimension: ${firstEmbedding.length}`);
+
+    const vectors = processedChunks.map((chunk, i) => {
+      const embedding = Array.isArray(embeddingResponse[i])
+        ? embeddingResponse[i]
+        : embeddingResponse[i]?.values || [];
+      return {
+        id: `doc-${Date.now()}-${i}`,
+        values: embedding,
+        metadata: {
+          text: chunk.pageContent,
+          ...chunk.metadata,
+        },
+      };
     });
-    console.log(`Stored ${chunks.length} chunks in Pinecone ✅`);
+
+    console.log(
+      `Created ${vectors.length} vectors, first vector ID: ${vectors[0]?.id}, values length: ${vectors[0]?.values?.length}`,
+    );
+    console.log(`Upserting ${vectors.length} vectors to Pinecone...`);
+    await index.upsert(vectors);
+    console.log(`Stored ${vectors.length} chunks in Pinecone ✅`);
   } catch (error) {
     console.error("Error storing in Pinecone:", error);
     throw error;
@@ -106,8 +152,9 @@ async function setup(source) {
 
 // ===== LOAD EXISTING VECTOR DB =====
 async function getVectorStore() {
-  const vectorStore = await PineconeStore.fromExistingIndex(queryEmbeddings, {
+  const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
     pineconeIndex: index,
+    textKey: "text",
   });
   return vectorStore;
 }
