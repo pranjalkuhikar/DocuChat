@@ -53,8 +53,12 @@ async function setup(source) {
     ) {
       console.log(`Loading PDF from URL: ${source} 📄`);
       const response = await fetch(source);
-      const blob = await response.blob();
-      loader = new WebPDFLoader(blob);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF from URL: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+      loader = new PDFLoader(blob);
     } else {
       console.log(`Loading content from URL: ${source} 🌐`);
       loader = new CheerioWebBaseLoader(source);
@@ -65,7 +69,10 @@ async function setup(source) {
   }
 
   const docs = await loader.load();
+  console.log(`Loaded ${docs.length} document pages 📄`);
+
   const nonEmptyDocs = docs.filter((doc) => doc.pageContent?.trim());
+  console.log(`Found ${nonEmptyDocs.length} non-empty pages 📄`);
 
   if (nonEmptyDocs.length === 0) {
     throw new Error(`No text could be extracted from source: ${source}`);
@@ -75,9 +82,10 @@ async function setup(source) {
     chunkSize: 1000,
     chunkOverlap: 100,
   });
-  const chunks = (await textSplitter.splitDocuments(nonEmptyDocs)).filter(
-    (chunk) => chunk.pageContent?.trim(),
-  );
+
+  const splitDocs = await textSplitter.splitDocuments(nonEmptyDocs);
+  const chunks = splitDocs.filter((chunk) => chunk.pageContent?.trim());
+  console.log(`Created ${chunks.length} chunks for Pinecone 🧩`);
 
   if (chunks.length === 0) {
     throw new Error(
@@ -85,10 +93,15 @@ async function setup(source) {
     );
   }
 
-  await PineconeStore.fromDocuments(chunks, docEmbeddings, {
-    pineconeIndex: index,
-  });
-  console.log(`Stored ${chunks.length} chunks in Pinecone ✅`);
+  try {
+    await PineconeStore.fromDocuments(chunks, docEmbeddings, {
+      pineconeIndex: index,
+    });
+    console.log(`Stored ${chunks.length} chunks in Pinecone ✅`);
+  } catch (error) {
+    console.error("Error storing in Pinecone:", error);
+    throw error;
+  }
 }
 
 // ===== LOAD EXISTING VECTOR DB =====
