@@ -12,7 +12,8 @@ export default function Home() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isChatting, setIsChatting] = useState(false);
   const [status, setStatus] = useState("");
   const [activeDoc, setActiveDoc] = useState<string | null>(null);
 
@@ -42,7 +43,7 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsLoading(true);
+    setIsUploading(true);
     setStatus("Uploading PDF...");
     const formData = new FormData();
     formData.append("pdf", file);
@@ -71,13 +72,13 @@ export default function Home() {
         `Failed to upload PDF. ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
-      setIsLoading(false);
+      setIsUploading(false);
     }
   };
 
   const handleUrlSubmit = async () => {
     if (!url) return;
-    setIsLoading(true);
+    setIsUploading(true);
     setStatus("Analyzing URL...");
 
     try {
@@ -105,18 +106,18 @@ export default function Home() {
         `Failed to analyze URL. ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
-      setIsLoading(false);
+      setIsUploading(false);
     }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isChatting) return;
 
     const userMessage = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-    setIsLoading(true);
+    setIsChatting(true);
 
     try {
       const res = await fetch("http://localhost:3001/api/chat", {
@@ -145,7 +146,7 @@ export default function Home() {
         },
       ]);
     } finally {
-      setIsLoading(false);
+      setIsChatting(false);
     }
   };
 
@@ -206,7 +207,7 @@ export default function Home() {
                 className="hidden"
                 accept=".pdf"
                 onChange={handleFileUpload}
-                disabled={isLoading}
+                disabled={isUploading}
               />
               <svg
                 className="w-10 h-10 text-zinc-400"
@@ -223,7 +224,7 @@ export default function Home() {
               </svg>
               <div className="text-center">
                 <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {isLoading
+                  {isUploading
                     ? "Processing..."
                     : "Click to upload or drag and drop"}
                 </p>
@@ -244,12 +245,12 @@ export default function Home() {
                   className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isUploading}
                 />
               </div>
               <button
                 onClick={handleUrlSubmit}
-                disabled={isLoading || !url}
+                disabled={isUploading || !url}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <svg
@@ -265,7 +266,7 @@ export default function Home() {
                     d="M13 10V3L4 14h7v7l9-11h-7z"
                   />
                 </svg>
-                {isLoading ? "Analyzing..." : "Analyze URL"}
+                {isUploading ? "Analyzing..." : "Analyze URL"}
               </button>
             </div>
           </div>
@@ -301,7 +302,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-            {isLoading && (
+            {isChatting && (
               <div className="flex justify-start">
                 <div className="bg-white dark:bg-zinc-800 rounded-2xl px-4 py-3 text-sm animate-pulse shadow-sm border dark:border-zinc-700">
                   Thinking...
@@ -323,11 +324,11 @@ export default function Home() {
                 className="w-full pl-4 pr-12 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading}
+                disabled={isChatting || isUploading}
               />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isChatting || !input.trim() || isUploading}
                 className="absolute right-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <svg
