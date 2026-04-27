@@ -9,7 +9,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import config from "../config/config.js";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
+import { CohereEmbeddings } from "@langchain/cohere";
 
 // ===== MODEL =====
 const model = new ChatGoogleGenerativeAI({
@@ -18,8 +18,9 @@ const model = new ChatGoogleGenerativeAI({
 });
 
 // ===== EMBEDDINGS =====
-const embeddings = new HuggingFaceTransformersEmbeddings({
-  model: "Xenova/all-MiniLM-L6-v2",
+const embeddings = new CohereEmbeddings({
+  apiKey: config.COHERE_API_KEY,
+  model: "embed-english-v3.0", // 1024 dims — matches Pinecone index ✅
 });
 
 // ===== PINECONE =====
