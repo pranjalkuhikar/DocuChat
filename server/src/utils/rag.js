@@ -139,3 +139,10 @@ async function query(question) {
 }
 
 export { setup, query };
+
+async function deleteAll() {
+  await index.deleteAll();
+  console.log("Pinecone index cleared ✅");
+}
+
+export { deleteAll };

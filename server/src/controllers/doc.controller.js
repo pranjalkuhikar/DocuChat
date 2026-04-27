@@ -1,4 +1,4 @@
-import { setup, query } from "../utils/rag.js";
+import { setup, query, deleteAll } from "../utils/rag.js";
 import ImageKit from "imagekit";
 import config from "../config/config.js";
 
@@ -56,6 +56,15 @@ export const chat = async (req, res) => {
     res.json({ response });
   } catch (error) {
     console.error("Chat error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+export const clearDB = async (req, res) => {
+  try {
+    await deleteAll();
+    res.json({ message: "Pinecone index cleared successfully" });
+  } catch (error) {
+    console.error("Clear DB error:", error);
     res.status(500).json({ error: error.message });
   }
 };
