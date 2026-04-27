@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -14,6 +15,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [status, setStatus] = useState("");
   const [activeDoc, setActiveDoc] = useState<string | null>(null);
 
@@ -37,6 +39,31 @@ export default function Home() {
     setActiveDoc(null);
     setStatus("");
     setUrl("");
+  };
+
+  const resetDB = async () => {
+    if (!confirm("Delete all vectors from Pinecone? This cannot be undone."))
+      return;
+    setIsClearing(true);
+    setStatus("Clearing database...");
+    try {
+      const res = await fetch("http://localhost:3001/api/clear", {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setStatus("Database cleared ✅");
+        resetSession();
+      } else {
+        const data = await res.json();
+        setStatus(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      setStatus(
+        `Failed to clear DB. ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,6 +215,13 @@ export default function Home() {
           >
             Reset
           </button>
+          <button
+            onClick={resetDB}
+            disabled={isClearing}
+            className="px-4 py-2 text-sm font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+          >
+            {isClearing ? "Clearing..." : "Reset DB"}
+          </button>
           <button className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 rounded-full hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 transition-colors">
             Connect Wallet
           </button>
@@ -294,11 +328,53 @@ export default function Home() {
                       : "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50 border dark:border-zinc-700 shadow-sm"
                   }`}
                 >
-                  {msg.content
-                    .split("**")
-                    .map((part, index) =>
-                      index % 2 === 1 ? <b key={index}>{part}</b> : part,
-                    )}
+                  {msg.role === "user" ? (
+                    msg.content
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => (
+                          <p className="mb-2 last:mb-0">{children}</p>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc pl-4 mb-2 space-y-1">
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal pl-4 mb-2 space-y-1">
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children }) => (
+                          <li className="leading-relaxed">{children}</li>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold">{children}</strong>
+                        ),
+                        h1: ({ children }) => (
+                          <h1 className="text-base font-bold mb-2">
+                            {children}
+                          </h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2 className="text-sm font-bold mb-1">{children}</h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-sm font-semibold mb-1">
+                            {children}
+                          </h3>
+                        ),
+                        code: ({ children }) => (
+                          <code className="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-xs font-mono">
+                            {children}
+                          </code>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </div>
             ))}
