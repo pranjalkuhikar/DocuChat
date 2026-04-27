@@ -13,7 +13,7 @@ import { CohereEmbeddings } from "@langchain/cohere";
 
 // ===== MODEL =====
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-1.5-flash",
+  model: "gemini-flash-latest",
   apiKey: config.GEMINI_API_KEY,
 });
 
@@ -21,6 +21,7 @@ const model = new ChatGoogleGenerativeAI({
 const embeddings = new CohereEmbeddings({
   apiKey: config.COHERE_API_KEY,
   model: "embed-english-v3.0", // 1024 dims — matches Pinecone index ✅
+  inputType: "search_document", // Required for Cohere v3 models
 });
 
 // ===== PINECONE =====
@@ -88,7 +89,8 @@ async function setup(source) {
     );
   }
 
-  const processedChunks = chunks.map((chunk, i) => ({
+  // Tag each chunk with source metadata
+  const processedChunks = chunks.map((chunk) => ({
     ...chunk,
     metadata: {
       ...chunk.metadata,
@@ -98,53 +100,15 @@ async function setup(source) {
   }));
 
   try {
-    console.log("Embedding documents manually...");
-    const texts = processedChunks.map((chunk) => chunk.pageContent);
-    console.log(`Preparing to embed ${texts.length} text chunks`);
-
-    const embeddingResponse = await embeddings.embedDocuments(texts);
     console.log(
-      `Embedding response type: ${typeof embeddingResponse}, length: ${Array.isArray(embeddingResponse) ? embeddingResponse.length : "N/A"}`,
+      `Storing ${processedChunks.length} chunks in Pinecone via PineconeStore... 🧩`,
     );
-    console.log(
-      `First embedding type: ${Array.isArray(embeddingResponse) ? typeof embeddingResponse[0] : "N/A"}`,
-    );
-
-    if (
-      !embeddingResponse ||
-      !Array.isArray(embeddingResponse) ||
-      embeddingResponse.length === 0
-    ) {
-      throw new Error(
-        `Embeddings returned invalid response: ${JSON.stringify(embeddingResponse)}`,
-      );
-    }
-
-    const firstEmbedding = Array.isArray(embeddingResponse[0])
-      ? embeddingResponse[0]
-      : embeddingResponse[0]?.values || [];
-    console.log(`First embedding dimension: ${firstEmbedding.length}`);
-
-    const vectors = processedChunks.map((chunk, i) => {
-      const embedding = Array.isArray(embeddingResponse[i])
-        ? embeddingResponse[i]
-        : embeddingResponse[i]?.values || [];
-      return {
-        id: `doc-${Date.now()}-${i}`,
-        values: embedding,
-        metadata: {
-          text: chunk.pageContent,
-          ...chunk.metadata,
-        },
-      };
+    // PineconeStore.fromDocuments handles embedding + upsert correctly
+    await PineconeStore.fromDocuments(processedChunks, embeddings, {
+      pineconeIndex: index,
+      textKey: "text",
     });
-
-    console.log(
-      `Created ${vectors.length} vectors, first vector ID: ${vectors[0]?.id}, values length: ${vectors[0]?.values?.length}`,
-    );
-    console.log(`Upserting ${vectors.length} vectors to Pinecone...`);
-    await index.upsert(vectors);
-    console.log(`Stored ${vectors.length} chunks in Pinecone ✅`);
+    console.log(`Stored ${processedChunks.length} chunks in Pinecone ✅`);
   } catch (error) {
     console.error("Error storing in Pinecone:", error);
     throw error;
