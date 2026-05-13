@@ -14,6 +14,29 @@ DocuChat is a high-performance **Document & Web Analyzer** built with **LangChai
 
 ---
 
+## ✨ Latest Improvements (May 2026)
+
+### Precision & Performance
+- **Smaller Chunks** (500 chars) for more targeted, relevant responses
+- **Concise Answers** - System prompt enforces 5-sentence limit
+- **Smart Context Filtering** - Limits context to 2000 chars max
+- **Better Separation** - Chunks separated with "---" for clarity
+
+### Reliability & Safety
+- **File Validation** - PDF type/size checks (25MB limit)
+- **URL Validation** - Validates format before processing
+- **Message Validation** - 3-500 character range enforcement
+- **Request Timeout** - 120-second limit prevents hanging requests
+- **Better Error Messages** - Clear, actionable error feedback
+
+### Configuration
+- **Environment Variables** - API URL now configurable (`.env.local`)
+- **Production Ready** - Easy switch between dev/production endpoints
+
+See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed configuration and troubleshooting.
+
+---
+
 ## 🛠️ Tech Stack
 
 ### Frontend
