@@ -34,8 +34,25 @@ const index = pinecone.Index(config.PINECONE_INDEX);
 // ===== PROMPT =====
 function template() {
   return ChatPromptTemplate.fromMessages([
-    ["system", "You are an expert PDF analyzer."],
-    ["human", "Answer the question based on this context:\n{pdfText}"],
+    [
+      "system",
+      `You are a precise document assistant. Follow these rules strictly:
+1. Answer ONLY the question asked - no extra information
+2. Be concise and direct - keep answers under 5 sentences
+3. Use only the provided context
+4. If information is not in context, say "I couldn't find this information in the document"
+5. Do not add assumptions or external knowledge
+6. Format long answers with bullet points for clarity`,
+    ],
+    [
+      "human",
+      `Question: {question}
+
+Context from document:
+{pdfText}
+
+Provide a direct, concise answer based ONLY on the context above.`,
+    ],
   ]);
 }
 
@@ -75,8 +92,8 @@ async function setup(source) {
   }
 
   const textSplitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 1000,
-    chunkOverlap: 100,
+    chunkSize: 500, // Reduced from 1000 for better relevance
+    chunkOverlap: 50, // Reduced overlap
   });
 
   const splitDocs = await textSplitter.splitDocuments(nonEmptyDocs);
@@ -128,10 +145,22 @@ async function query(question) {
   const vectorStore = await getVectorStore();
   const chain = template().pipe(model);
 
+  // Retrieve top 3 results with better relevance
   const results = await vectorStore.similaritySearch(question, 3);
-  const context = results.map((result) => result.pageContent).join("\n");
+
+  // Filter and format context - keep only relevant chunks
+  const context = results
+    .filter((result) => result.pageContent?.trim()) // Remove empty chunks
+    .map((result) => result.pageContent)
+    .join("\n---\n") // Better separation between chunks
+    .slice(0, 2000); // Limit context to 2000 chars to prevent token bloat
+
+  if (!context.trim()) {
+    return "I couldn't find relevant information in the document to answer your question.";
+  }
 
   const response = await chain.invoke({
+    question: question,
     pdfText: context,
   });
 
