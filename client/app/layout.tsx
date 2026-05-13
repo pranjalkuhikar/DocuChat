@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,12 +13,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DocuChat",
-  description: "A document chatbot",
+  title: "DocuChat - AI Document Assistant",
+  description: "Analyze PDFs and websites with AI-powered RAG",
+  keywords: ["document", "chatbot", "AI", "PDF", "RAG", "LangChain", "Gemini"],
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
   },
+  openGraph: {
+    title: "DocuChat - AI Document Assistant",
+    description: "Analyze PDFs and websites with AI-powered RAG",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
