@@ -1,0 +1,11 @@
+import { useCallback, useRef, useEffect } from 'react';
+
+export const useScrollToBottom = () => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  return { messagesEndRef, scrollToBottom };
+};
